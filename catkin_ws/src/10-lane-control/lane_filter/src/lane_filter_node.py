@@ -11,16 +11,16 @@ from math import floor, pi, sqrt
 
 class LaneFilterNode(object):
     """
-    
+
         Lane Filter Node
-        
+
         Author: Liam Paull
-        
+
         Inputs: SegmentList from line detector
-        
-        Outputs: LanePose - the d (lateral displacement) and phi (relative angle) 
+
+        Outputs: LanePose - the d (lateral displacement) and phi (relative angle)
         of the car in the lane
-        
+
         For more info on algorithm and parameters please refer to the google doc:
          https://drive.google.com/open?id=0B49dGT7ubfmSX1k5ZVN1dEU4M2M
 
@@ -29,7 +29,7 @@ class LaneFilterNode(object):
         self.node_name = "Lane Filter"
         self.active = True
         self.updateParams(None)
-        
+
         self.d,self.phi = np.mgrid[self.d_min:self.d_max:self.delta_d,self.phi_min:self.phi_max:self.delta_phi]
         self.beliefRV=np.empty(self.d.shape)
         self.initializeBelief()
@@ -78,9 +78,9 @@ class LaneFilterNode(object):
 
         self.cov_v       = rospy.get_param("~cov_v",0.5) # linear velocity "input"
         self.cov_omega   = rospy.get_param("~cov_omega",0.01) # angular velocity "input"
-        self.linewidth_white = rospy.get_param("~linewidth_white",0.04)
-        self.linewidth_yellow = rospy.get_param("~linewidth_yellow",0.02)
-        self.lanewidth        = rospy.get_param("~lanewidth",0.4)
+        self.linewidth_white = rospy.get_param("~linewidth_white",0.0508)
+        self.linewidth_yellow = rospy.get_param("~linewidth_yellow",0.0254)
+        self.lanewidth        = rospy.get_param("~lanewidth",0.2175)
         self.min_max = rospy.get_param("~min_max", 0.3) # nats
         # For use of distance weighting (dw) function
         self.use_distance_weighting = rospy.get_param("~use_distance_weighting",False)
@@ -131,7 +131,7 @@ class LaneFilterNode(object):
             i = floor((d_i - self.d_min)/self.delta_d)
             j = floor((phi_i - self.phi_min)/self.delta_phi)
 
-            if self.use_distance_weighting:           
+            if self.use_distance_weighting:
                 dist_weight = self.dwa*l_i**3+self.dwb*l_i**2+self.dwc*l_i+self.zero_val
                 if dist_weight < 0:
                     continue
@@ -163,7 +163,7 @@ class LaneFilterNode(object):
         bridge = CvBridge()
         belief_img = bridge.cv2_to_imgmsg((255*self.beliefRV).astype('uint8'), "mono8")
         belief_img.header.stamp = segment_list_msg.header.stamp
-        
+
         max_val = self.beliefRV.max()
         self.lanePose.in_lane = max_val > self.min_max and len(segment_list_msg.segments) > self.min_segs and np.linalg.norm(measurement_likelihood) != 0
         self.pub_lane_pose.publish(self.lanePose)
@@ -186,7 +186,7 @@ class LaneFilterNode(object):
     def updateVelocity(self,twist_msg):
         self.v_current = twist_msg.v
         self.w_current = twist_msg.omega
-        
+
         #self.v_avg = (self.v_current + self.v_last)/2.0
         #self.w_avg = (self.w_current + self.w_last)/2.0
 
@@ -228,7 +228,7 @@ class LaneFilterNode(object):
         #bridge = CvBridge()
         #prop_img = bridge.cv2_to_imgmsg((255*self.beliefRV).astype('uint8'), "mono8")
         #self.pub_prop_img.publish(prop_img)
-               
+
 
     def updateBelief(self,measurement_likelihood):
         self.beliefRV=np.multiply(self.beliefRV+1,measurement_likelihood+1)-1
