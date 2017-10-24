@@ -137,7 +137,7 @@ class LaneFilterNode(object):
                     continue
                 measurement_likelihood[i,j] = measurement_likelihood[i,j] + dist_weight
             else:
-                measurement_likelihood[i,j] = measurement_likelihood[i,j] +  1/(l_i)
+                measurement_likelihood[i,j] = measurement_likelihood[i,j] +  1.0/(l_i)
 
 
         if np.linalg.norm(measurement_likelihood) == 0:
