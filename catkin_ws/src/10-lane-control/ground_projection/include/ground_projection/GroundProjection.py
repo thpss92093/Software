@@ -13,7 +13,7 @@ import os.path
 from duckietown_utils import (logger, get_duckiefleet_root)
 
 class GroundProjection():
-    
+
     def __init__(self, robot_name="shamrock"):
 
         # defaults overwritten by param
@@ -34,7 +34,7 @@ class GroundProjection():
         self.ci_=camera_info
         self.pcm_.fromCameraInfo(camera_info)
         print("pinhole camera model initialized")
-        
+
     def vector2pixel(self, vec):
         pixel = Pixel()
         cw = self.ci_.width
@@ -81,9 +81,10 @@ class GroundProjection():
         # TODO check whether z=0 or z=1.
         # I think z==1 (jmichaux)
         # I think z==0 (liam)
-        ground_point = np.array([point.x, point.y, 0.0])
-        image_point = self.Hinv * ground_point
-        image_point = np.abs(image_point / image_point[2])
+        ground_point = np.array([point.x, point.y, 0.0]).reshape(3,1)
+        image_point = np.dot(np.linalg.inv(self.H), point)
+        # image_point = self.Hinv * ground_point
+        image_point = image_point / image_point[2]
 
         pixel = Pixel()
         if not self.rectified_input:
