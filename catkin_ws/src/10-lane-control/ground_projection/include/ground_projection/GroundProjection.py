@@ -81,7 +81,7 @@ class GroundProjection():
         # TODO check whether z=0 or z=1.
         # I think z==1 (jmichaux)
         # I think z==0 (liam)
-        ground_point = np.array([point.x, point.y, 0.0]).reshape(3,1)
+        ground_point = np.array([point.x, point.y, 1]).reshape(3,1)
         image_point = np.dot(np.linalg.inv(self.H), point)
         # image_point = self.Hinv * ground_point
         image_point = image_point / image_point[2]
