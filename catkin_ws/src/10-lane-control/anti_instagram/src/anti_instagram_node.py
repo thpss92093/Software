@@ -38,7 +38,7 @@ class AntiInstagramNode():
         # FIXME: read default from configuration and publish it
 
         self.ai = AntiInstagram()
-        self.corrected_image = Image()
+        self.corrected_image = CompressedImage()
         self.bridge = CvBridge()
 
         self.image_msg = None
@@ -61,7 +61,8 @@ class AntiInstagramNode():
 
             corrected_image_cv2 = np.clip(corrected_image_cv2, 0, 255).astype(np.uint8)
             # self.corrected_image = self.bridge.cv2_to_imgmsg(corrected_image_cv2, "bgr8")
-            corrected_image.data = d8_compressed_image_from_cv_image(corrected_image_cv2).data
+            self.corrected_image = image_msg
+            self.corrected_image.data = d8_compressed_image_from_cv_image(corrected_image_cv2).data
 
             tk.completed('encode')
 
