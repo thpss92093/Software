@@ -6,6 +6,7 @@ from anti_instagram.AntiInstagram import *
 from duckietown_utils.jpg import image_cv_from_jpg
 from cv_bridge import CvBridge  # @UnresolvedImport
 from line_detector.timekeeper import TimeKeeper
+from duckietown_utils import rgb_from_ros, d8_compressed_image_from_cv_image
 
 class AntiInstagramNode():
     def __init__(self):
@@ -53,18 +54,14 @@ class AntiInstagramNode():
             # cv_image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8") # reporting errors on this line:
             # dtype, n_channels = self.encoding_to_dtype_with_channels(img_msg.encoding)
             # AttributeError: 'CompressedImage' object has no attribute 'encoding'
-            image_as_np_array = np.fromstring(image_msg.data, np.uint8)
-            cv_image = cv2.imdecode(np_arr, cv2.CV_LOAD_IMAGE_COLOR)
+            cv_image = rgb_from_ros(image_msg)
 
             corrected_image_cv2 = self.ai.applyTransform(cv_image)
             tk.completed('applyTransform')
 
             corrected_image_cv2 = np.clip(corrected_image_cv2, 0, 255).astype(np.uint8)
             # self.corrected_image = self.bridge.cv2_to_imgmsg(corrected_image_cv2, "bgr8")
-            corrected_image = CompressedImage()
-            corrected_image.header.stamp = rospy.Time.now()
-            corrected_image.format = "jpeg"
-            corrected_image.data = np.array(cv2.imencode('.jpg', corrected_image_cv2)[1]).tostring()
+            corrected_image.data = d8_compressed_image_from_cv_image(corrected_image_cv2).data
 
             tk.completed('encode')
 
