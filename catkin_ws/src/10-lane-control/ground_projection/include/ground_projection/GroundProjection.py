@@ -11,7 +11,6 @@ from duckietown_utils.path_utils import get_ros_package_path
 from duckietown_utils.yaml_wrap import (yaml_load_file, yaml_write_to_file)
 import os.path
 from duckietown_utils import (logger, get_duckiefleet_root)
-from __future__ import division # this is to ensure float division
 
 class GroundProjection():
 
@@ -50,8 +49,8 @@ class GroundProjection():
 
     def pixel2vector(self, pixel):
         vec = Vector2D()
-        vec.x = pixel.u / self.ci_.width
-        vec.y = pixel.v / self.ci_.height
+        vec.x = float(pixel.u) / float(self.ci_.width)
+        vec.y = float(pixel.v) / float(self.ci_.height)
         return vec
 
     def vector2ground(self, vec):
@@ -73,8 +72,8 @@ class GroundProjection():
         x = ground_point[0]
         y = ground_point[1]
         z = ground_point[2]
-        point.x = x/z
-        point.y = y/z
+        point.x = float(x)/float(z)
+        point.y = float(y)/float(z)
         point.z = 0.0
         return point
 
@@ -85,7 +84,7 @@ class GroundProjection():
         ground_point = np.array([point.x, point.y, 1.0]).reshape(3,1)
         image_point = np.dot(np.linalg.inv(self.H), ground_point)
         # image_point = self.Hinv * ground_point
-        image_point = image_point / image_point[2]
+        image_point = image_point / float(image_point[2])
 
         pixel = Pixel()
         if not self.rectified_input:
