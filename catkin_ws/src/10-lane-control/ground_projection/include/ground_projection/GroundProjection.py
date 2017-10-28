@@ -11,6 +11,7 @@ from duckietown_utils.path_utils import get_ros_package_path
 from duckietown_utils.yaml_wrap import (yaml_load_file, yaml_write_to_file)
 import os.path
 from duckietown_utils import (logger, get_duckiefleet_root)
+from __future__ import division # this is to ensure float division
 
 class GroundProjection():
 
@@ -39,8 +40,8 @@ class GroundProjection():
         pixel = Pixel()
         cw = self.ci_.width
         ch = self.ci_.height
-        pixel.u = cw * vec.x
-        pixel.v = ch * vec.y
+        pixel.u = int(cw * vec.x)
+        pixel.v = int(ch * vec.y)
         if (pixel.u < 0): pixel.u = 0
         if (pixel.u > cw -1): pixel.u = cw - 1
         if (pixel.v < 0): pixel.v = 0
@@ -66,7 +67,7 @@ class GroundProjection():
         if not self.rectified_input:
             uv_raw = self.pcm_.rectifyPoint(uv_raw)
         #uv_raw = [uv_raw, 1]
-        uv_raw = np.append(uv_raw, np.array([1]))
+        uv_raw = np.append(uv_raw, np.array([1.0]))
         ground_point = np.dot(self.H, uv_raw)
         point = Point()
         x = ground_point[0]
@@ -81,19 +82,19 @@ class GroundProjection():
         # TODO check whether z=0 or z=1.
         # I think z==1 (jmichaux)
         # I think z==0 (liam)
-        ground_point = np.array([point.x, point.y, 1]).reshape(3,1)
-        image_point = np.dot(np.linalg.inv(self.H), point)
+        ground_point = np.array([point.x, point.y, 1.0]).reshape(3,1)
+        image_point = np.dot(np.linalg.inv(self.H), ground_point)
         # image_point = self.Hinv * ground_point
         image_point = image_point / image_point[2]
 
         pixel = Pixel()
         if not self.rectified_input:
             distorted_pixel = self.pcm_.project3dToPixel(image_point)
-            pixel.u = distorted_pixel[0]
-            pixel.v = distorted_pixel[1]
+            pixel.u = int(distorted_pixel[0])
+            pixel.v = int(distorted_pixel[1])
         else:
-            pixel.u = image_point[0]
-            pixel.v = image_point[1]
+            pixel.u = int(image_point[0])
+            pixel.v = int(image_point[1])
 
     def rectify(self, cv_image_raw):
         '''Undistort image'''
