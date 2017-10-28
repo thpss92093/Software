@@ -18,7 +18,7 @@ class AntiInstagramNode():
         self.image_pub_switch = rospy.get_param("~publish_corrected_image",False)
 
         # Initialize publishers and subscribers
-        self.pub_image = rospy.Publisher("~corrected_image", CompressedImage, queue_size=1)
+        self.pub_image = rospy.Publisher("~corrected_image/compressed", CompressedImage, queue_size=1)
         self.pub_health = rospy.Publisher("~health", AntiInstagramHealth, queue_size=1,latch=True)
         self.pub_transform = rospy.Publisher("~transform", AntiInstagramTransform, queue_size=1, latch=True)
 
