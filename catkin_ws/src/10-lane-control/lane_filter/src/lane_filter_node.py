@@ -139,7 +139,7 @@ class LaneFilterNode(object):
             else:
                 measurement_likelihood[i,j] = measurement_likelihood[i,j] +  1.0/(l_i)
 
-
+        print measurement_likelihood[i,j]
         if np.linalg.norm(measurement_likelihood) == 0:
             return
         measurement_likelihood = measurement_likelihood/np.sum(measurement_likelihood)
