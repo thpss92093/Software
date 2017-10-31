@@ -54,7 +54,7 @@ class AntiInstagramNode():
             # cv_image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8") # reporting errors on this line:
             # dtype, n_channels = self.encoding_to_dtype_with_channels(img_msg.encoding)
             # AttributeError: 'CompressedImage' object has no attribute 'encoding'
-            cv_image = rgb_from_ros(image_msg)
+            cv_image = image_cv_from_jpg(image_msg.data)
 
             corrected_image_cv2 = self.ai.applyTransform(cv_image)
             tk.completed('applyTransform')
