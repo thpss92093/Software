@@ -12,11 +12,12 @@ from skimage import measure
 
 import rospy
 from sensor_msgs.msg import CompressedImage
-from geometry_msgs.msg import PoseArray, Point
 
 from duckietown_utils import d8_compressed_image_from_cv_image, logger, rgb_from_ros, yaml_load, get_duckiefleet_root
 from duckietown_utils import get_base_name, load_camera_intrinsics, load_homography, load_map, rectify
 from duckietown_utils import load_map, load_camera_intrinsics, load_homography, rectify
+
+from PIL import Image, ImageDraw
 
 class Detector():
     '''class for detecting obstacles'''
@@ -26,22 +27,12 @@ class Detector():
 
         # Load camera calibration parameters
 	self.intrinsics = load_camera_intrinsics(robot_name)
-	self.H = load_homography(self.robot_name)
-
-	#define where to cut the image, which subsection you want to focus on
-	#self.crop=130
-	self.crop=0
-	
-
-	# initialize second publisher, later i think we should put this in the "front" file
-	# currently we publish the "bottom" center of the obstacle!!!
-	self.pub_topic2 = '/{}/obst_coordinates'.format(robot_name)
-        self.publisher2 = rospy.Publisher(self.pub_topic2, Point, queue_size=1)
+	self.H = inv(load_homography(self.robot_name))	
 	
     def process_image(self, image):
 
 	# CROP IMAGE, image is BGR
- 	im1_cropped = image[self.crop:,:,:]
+ 	im1_cropped = image[130:,:,:]
 
         # FILTER IMAGE
 	# Convert BGR to HSV
@@ -83,70 +74,81 @@ class Detector():
 	i=np.max(segmented_img)
 	for k in range(1,i+1): #iterate through all segmented numbers
 		#first only keep large elements then eval their shape
-		if (np.sum((segmented_img == k))<100): #skip all those who were merged away or have not enough pixels tiefenabh???
-		    segmented_img[(segmented_img == k)]=0
-		else:
-		    
-		    B=np.copy(segmented_img)
-		    B[(B != k)]=0
-		    C=np.nonzero(B)
-		    ITER=np.reshape(C, (2,-1))
-		    #print C 
-		    top=np.min(C[0])
-		    bottom=np.max(C[0])
-		    left=np.min(C[1])
-		    right=np.max(C[1])
-		    height=bottom-top #indices are counted from top to down
-		    total_width=right-left
-		    
-		    # Now finidng the width on the same height
-		    height_left=np.max(ITER[0,(C[1]==left)]) 
-		    width_height_left = np.max(ITER[1,(C[0]==height_left)])
-		    #WIDTH AT HEIGHT OF LEFT POSITION
-		    width_left= width_height_left-left
+		amount_pixels = np.sum(segmented_img == k)
+        if (amount_pixels<300): #skip all those who were merged away or have not enough pixels tiefenabh???
+            segmented_img[(segmented_img == k)]=0
+        else:
+            #DIE BREITE MUSS ICH AUF DER GLEICHEN HOEHE NEHMEN!!!!!!
+            B=np.copy(segmented_img)
+            B[(B != k)]=0
+            C=np.nonzero(B)
+            ITER=np.reshape(C, (2,-1))
+            #print C 
+            top_v = np.min(C[0])
+            top_u = ITER[1,np.argmin(C[0])]
+            bottom_v = np.max(C[0])
+            bottom_u = ITER[1,np.argmax(C[0])]
+            left_u = np.min(C[1])
+            left_v = ITER[0,np.argmin(C[1])]
+            right_u = np.max(C[1])
+            right_v = ITER[0,np.argmax(C[1])]
+            height=bottom_v-top_v #da bottom hoehere pixzahl hat!!
+            total_width=right_u-left_u
+            
+            # Now we have a look on this Object and try to find out if it has a rectangular shape
+            polygon = [(top_u,top_v),(right_u,right_v),(bottom_u,bottom_v),(left_u,left_v)] 
+            
+            tupel = np.shape(B)
+            img = Image.new('L',(tupel[1],tupel[0]) ,0)
+            ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+            subtract_mask = np.array(img)
+            subtract_mask = subtract_mask*k
+            #print k
+            #print subtract_mask[top_v,top_u]
+                        
+            # Subtract parallelogramm from original image
+            subtracted_values = np.subtract(B,subtract_mask)
+            #plt.imshow(abs(subtracted_values),cmap='gray'); plt.show()
+            print subtracted_values[300,50:60]
+            difference = 1.0*np.sum((subtracted_values))/(amount_pixels*k)
+            print difference
+            #plt.imshow(subtract_mask,cmap='gray'); plt.show()
 
-		    height_right=np.max(ITER[0,(C[1]==right)]) #ACHTUNG:kann mehrere WERTE HABEN
-		    width_height_right = np.min(ITER[1,(C[0]==height_right)])
-		    #WIDTH AT HEIGHT OF RIGHT POSITION
-		    width_right= right-width_height_right
+            #height_left=np.max(ITER[0,(C[1]==left)]) #ACHTUNG:kann mehrere WERTE HABEN
+            #width_height_left = np.max(ITER[1,(C[0]==height_left)])
+            #WIDTH AT HEIGHT OF LEFT POSITION
+            #width_left= width_height_left-left
 
-		    #print width_right
-		    #print width_left
-		    #print width_right
-		    #print height_left
-		    #print height_right
+            #height_right=np.max(ITER[0,(C[1]==right)]) #ACHTUNG:kann mehrere WERTE HABEN
+            #width_height_right = np.min(ITER[1,(C[0]==height_right)])
+            #WIDTH AT HEIGHT OF RIGHT POSITION
+            #width_right= right-width_height_right
 
-		    #print "NEW OBJECT:"
-		    #print bottom
-		    #print width_right
-		    #print 1.0*width_right/bottom
+            #print width_right
+            #print width_left
+            #print width_right
+            #print height_left
+            #print height_right
 
-		    #WIDTH AT TOP
-		    #MUSS NOCH ABFRAGE HIN DAMIT MAN NICHT OUT OF BOUNDS LAEUFT
-		    #width_top = np.max(ITER[1,(C[0]==top+int(0.5*height))])-np.min(ITER[1,(C[0]==top+int(0.5*height))])
+            #print "NEW OBJECT:"
+            #print bottom
+            #print width_right
+            #print 1.0*width_right/bottom
 
-		    #if (abs(height_left-height_right)>10): #FILTER 1
-		    #    final[(final == k)]=0
-		    #if (abs(width_top-width_right)<20): #FILTER 2
-		    #    final[(final == k)]=0
+            #WIDTH AT TOP
+            #MUSS NOCH ABFRAGE HIN DAMIT MAN NICHT OUT OF BOUNDS LAEUFT
+           
 
-		    if (1.0*width_right/bottom<0.25): #FILTER 3
-		        segmented_img[(segmented_img == k)]=0
+            #if (abs(height_left-height_right)>10): #FILTER 1
+            #    final[(final == k)]=0
+            #if (abs(width_top-width_right)<20): #FILTER 2
+            #    final[(final == k)]=0
 
-		    else:
-		        #UEBERGABE?
-		        obst_coordinates = Point()
-			point_calc=np.zeros((3,1),dtype=np.float)
-			#take care cause image was cropped,..
-			point_calc= np.dot(self.H,[[left+0.5*total_width],[bottom+self.crop],[1]])
-			realW_coords=[(point_calc[0])/point_calc[2],(point_calc[1])/point_calc[2]]
-			obst_coordinates.x = realW_coords[0]
-			obst_coordinates.y = realW_coords[1]
-			obst_coordinates.z = 1
-			self.publisher2.publish(obst_coordinates) 
-			#explanation: those parameters published here are seen from the !center of the axle! in direction
-			#of drive with x pointing in direction and y to the left of direction of drive in [m]		        
-			cv2.rectangle(orig_img,(np.min(C[1]),np.min(C[0])),(np.max(C[1]),np.max(C[0])),(0,255,0),3)
+            if (difference<0.35): #FILTER 3
+                segmented_img[(segmented_img == k)]=0
+
+            else:
+		        cv2.rectangle(orig_img,(np.min(C[1]),np.min(C[0])),(np.max(C[1]),np.max(C[0])),(0,255,0),3)
 
 	    #eig box np.min breite und hoehe!! if they passed the test!!!!
 	    #print abc
@@ -163,7 +165,7 @@ class Detector():
         '''Transforms point in ground coordinates to point in image
         coordinates using the inverse homography'''
 	point_calc=np.zeros((3,1),dtype=np.float)
-	point_calc= np.dot(inv(self.H),[[point[0]],[point[1]],[1]])
+	point_calc= np.dot(self.H,[[point[0]],[point[1]],[1]])
 
 	pixel_int=[int((point_calc[0])/point_calc[2]),int((point_calc[1])/point_calc[2])]
 	#print pixel_float
