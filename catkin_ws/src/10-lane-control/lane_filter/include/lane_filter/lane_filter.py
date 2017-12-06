@@ -90,7 +90,7 @@ class LaneFilterHistogram(Configurable, LaneFilterInterface):
                 continue
             d_i,phi_i,l_i = self.generateVote(segment)
             # if the vote lands outside of the histogram discard it
-            if d_i > self.d_max or d_i < self.d_min or phi_i < self.phi_min or phi_i>self.phi_max or sqrt(d_i**2 + l_i**2) > 0.1:
+            if d_i > self.d_max or d_i < self.d_min or phi_i < self.phi_min or phi_i>self.phi_max or sqrt(d_i**2 + l_i**2) > 0.2:
                 continue
             i = int(floor((d_i - self.d_min)/self.delta_d))
             j = int(floor((phi_i - self.phi_min)/self.delta_phi))
